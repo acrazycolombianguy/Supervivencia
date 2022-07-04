@@ -1,0 +1,227 @@
+---
+title: "Superviviencia"
+author: "Sergio Carrero"
+date: '2022-06-14'
+output:
+  pdf_document: default
+  html_document: default
+---
+#statistical description for survival data
+
+#Kaplan meier: estimador no parametrico sirve para estimar la funcion de supervivencia.Admitiendo una representaci{on grafica por medio de una función escalonada. 
+#Datos de supervivencia: tiempo al evento o falla.
+# Funcion de riesgo, funcion de supervivencia y funcion de riesgo acumulado se usan para estimar la probabilidad de sobrevivir.
+#Tiempo al evento: evento de interes.
+#Tiempo de supervivencia: Dias
+#Estatus de supervivencia: 
+#Datos censurados y no censurados. Ejemplo Censura: perdida de una fuente de datos por eventos inesperados es decir se arranco, elimino,  1 censurado y 2 muerto.
+#Variable respuesta: Tiempo.
+# de 10 variables hay 228 observaciones. 
+#Censoring data: condicion en el cual el valor de una medida de una observacion es parcialmente medido o conocida.
+# Ecog: es una escala de 0-4 escala para medir el nivel de capacidad de movimiento y cuidado de un paciente. Aplicado en palma puede ser severidad.
+#Evento de interes. Pueden ocurrir en una situación no muy clara. 
+# Prueba de rango logaritimico para estimar la supervivencia entre dos.
+# Prerequisito: es que los mecanismos de censura no esten relacionados al tiempo de supervivencia, por ejemplo que se pierdan, mueran,etc.
+```{r setup, include=FALSE}
+library(survival)
+str(lung)
+install.packages("km.ci")
+library(km.ci)
+```
+
+
+```{r cars}
+table(lung$inst)
+```
+# Al tener pacientes del a misma institucion pueden ser plantas de una hilera en una plantación. 
+# Tiempo de supervivencia: se mantiene
+# Karnofsky performance scales: Como se evidencia el deterioro del paciente. Indice de deterioro funcional.Aborto en palma puede ser un ejemplo perfecto.
+# meal.cal y wt.loss son el consumo de calorias y la perdida de peso, si la llevamos a palma pueden ser perdida de peso de racimos, hoja, indice foliar. Donde se deteriora una variable.
+
+```{r pressure, echo=FALSE}
+head(heart)
+```
+
+```{r setup, include=FALSE}
+lung.sur <- Surv(lung$time, lung$status)
+lung.sur
+class(lung.sur)
+```
+# Si sobrevive o no sobrevive, censurado y No censurado.  1 censurado y 2 muerto. El + es para diferenciar. Los datos son tipo surv.
+
+```{r cars}
+heart.sur <- Surv(heart$start, heart$stop, heart$event)
+heart.sur
+class(heart.sur)
+```
+# + Indicar censura y no censura en intervalo o con tiempos exactos.  Los datos son tipo surv.
+
+
+```{r pressure, echo=FALSE}
+lung.fit <- survfit(lung.sur~1)
+summary(lung.fit)
+
+```
+#Estimador de Kaplan Meier: En en analisis de supervivencia es un estimador no parametrico de la función de supervivencia.Se usa s(t) siendo la probabilidad de que uno de los integrantes viva mas alla de un tiempo t. 
+
+```{r cars}
+plot(lung.fit,xlab="Dias",ylab="Proporción de sujetos")
+abline(h = 0.5, col ='red')
+abline(v = 310, col ='red')
+abline(h = c(0.25, 0.75), col ='blue')
+abline(v = c(170, 550), col ='blue')
+```
+# La linea roja horizontal y vertical indican la probabilidad de que mueran el 50% de los individuos del estudio sobre los 310 dias.
+
+```{r cars}
+plot(lung.fit,xlab="Dias",ylab="Proporción de sujetos")
+abline(h = 0.5, col ='red')
+abline(v = 310, col ='red')
+points(c(310,310), c(0.43,0.57), pch = 16, col='blue') #Probabilidad de supervivencia
+points(c(280,360), c(0.5,0.5), pch = 16, col='green') # Tiempo
+```
+# La linea punteada son los limites inferiores y superiores 95 de confianza (intervalo de confianza), la linea central son los datos que yo observe.  En 330 dias la probabilidad de sobrevivir es del 60%. 
+# Fueron construidos con un enfoque no Parametrico, el tiempo es de (0.43, 0.57). El intervalo cambio en tamaño, puede la probabilidad cambiar de .14 en el tiempo. 
+
+
+```{r pressure, echo=FALSE}
+lung.fit.strata <- survfit(lung.sur~ph.ecog,lung)
+plot(lung.fit.strata, lty = 1:4, col= 1:4 ,xlab = "Dias", ylab="Proporcion de sujetos",
+     lwd=3)
+legend(700, .9, c("ph.karno=0", "ph.karno=1", "ph.Karno=2","ph.karno=3"), lty = 1 : 4, col = 1 : 4)
+abline(h = 0.5, col ='red')
+```
+#Probabilidad de supervivencia es del 50% llegando a 400, 300 y 200 dias.En 120 dias se mueren todos en el peor escenario para ese estatus. 
+
+
+#Por genero
+```{r }
+lung.fit.strata <- survfit(lung.sur~sex,lung)
+plot(lung.fit.strata, lty = 1:2, col= 1:2 ,xlab = "Dias", ylab="Proporcion de sujetos",
+     lwd=3)
+legend(700, .9, c("Male", "female"), lty = 1 : 2, col = 1 : 2)
+abline(h = 0.08, col ='red')
+abline(h = 1, col ='brown')
+abline(v = 10, col ='blue')
+abline(v = 780, col ='green')
+```
+# A los 400 dias el que tiene mayor posibilidad de supervivencia es la mujer. Al principio son iguales pero a partir de 780 dias ahora la mayor supervivencia se invierte con el hombre. 
+
+# Asignacion:
+#Asumir los datos como un cultivo de palma
+#Time = Tiempo, Variable respuesta: Tiempo de supervivencia
+#Edad = Age meses de plantación
+#Hibrido = sexo
+#Severidad = ph.ecog severidad en la misma escala
+#Nitrogeno M 17 n17= meal.cal : Nitrogeno medido en hoja 17
+# P17 = wt.losss: Fosforo medido en la hoja 17
+
+```{r }
+aalen.fit<- survfit(coxph(lung.sur~1), type="aalen")
+summary(aalen.fit)
+```
+
+# Supervivencia no es siempre vivo o muerto, se puede usar el esimador de Kaplan meier al menguarse la producción, procesos de nacimiento y muerte, las series de tiempo sirven mejor para a veces mostrar la mayor o menor probabilidad de producción en un culitivo.
+```{r }
+survdiff(lung.sur~ph.ecog,lung)
+```
+# Tenemos E y Ob esperados y observados de los diferentes eventos teniendo 3 grados de libertad con una probabilidad <0.05. LA VIRGUILLA ES LA FUNCION DE...Los datos obtenidos generan un p-valor poco probable con el cual se rechaza la hipotesis de igualdad en el patron de las curvas de supervivencia.  El metodo principal es limitado porlo que se usa el CIs para el estimador Kaplan-Meier.
+
+##iNTERVALOS DE CONFIANZA PARA EL ESTIMADOR DE KAPLAN-MEIER.
+```{r }
+a<-km.ci(lung.fit, conf.level=0.95, tl=NA, tu=NA,
+method="loghall")
+plot(a, lty=2, lwd=2, col = "red")
+lines(lung.fit, lwd=2, lty=1, col = 'black')
+lines(lung.fit, lwd=1, lty=4, conf.int=T, col = 'blue')
+linetype<-c(1, 2, 4)
+legend(600, .9, c("Kaplan-Meier", "Hall-Wellner", "Pointwise"), lty=(linetype))
+abline(h = 0.5, col ='green')
+abline(v = 310, col ='green')
+points(c(310,310), c(0.43,0.57), pch = 16, col='blue') #Probabilidad de supervivencia
+points(c(280,360), c(0.5,0.5), pch = 16, col='green') # Tiempo
+```
+# Se ingresa la funcion, con intervalo de confianza del 95, se hacen los respectivos graficos con 3 tipos de linea. El rojo se calcula con la linea 83 K-M, la lineas azules son los intervalos de confianza, la linea 86 cae en el centro. Kaplan meir para una probabilidad de 0.5 esta en 200 y 400, mientras que el Hall Wellner esta entre 300 y 480.Hall wellner, es usado para calcular las bandas, un intervalo de confianza puede calcularse para hacerlos mas conservador y bajo ese argumento se discute si se debe usar mejor el de Kaplan-Meier respecto el de Hall Welner. 
+
+
+```{r }
+aalen.fit<- survfit(coxph(lung.sur~1), type="aalen")
+sum = summary(aalen.fit) 
+
+plot(aalen.fit,col="red",lwd=1,lty=1)
+lines(lung.fit, lwd=1, lty=1)
+legend(600, 0.9, 
+       c("Nelson-Aalen","Kaplan-Meier"), lty=c(1,1),
+col=c("red","black"))
+```
+# Se usa cox DEBIDO A que fue realizado por una transformación de Cox. Tenemos el tiempo, riesgo, evento de supervivencia y los intervalos de confianza. En la grafica se puede evidenciar que se sobreponen, haciendo que los intervalos de confianza son muy similares. El estimador de Nelson-Aalen, este es siempre igual o iguales que al estimador Kaplan-Meier. Si el tamaño del conjunto de riesgo es relativamente mayor al numero de eventos, hay poca diferencia practica entre ambas.1 es el evento que sobrevivio, la sobrevivencia es el complemento y al tiempo 5 se evidencio que solo 1 llego al evento. Donde hubo 3 eventos. 
+
+
+```{r }
+hist(cumsum(sum$n.event))
+plot(cumsum(sum$n.event))
+```
+
+
+```{r}
+mod_suv = lm(cumsum(sum$n.event) ~ sum$time)
+summary(mod_suv)
+plot (sum$time, cumsum(sum$n.event), pch = 16)
+abline(mod_suv)
+```
+
+# z = 22,17 + 0,21
+```{r }
+survdiff(lung.sur~ph.ecog,lung) # prueba de Mantel-Haenszel
+survdiff(lung.sur~sex,lung) # prueba de Peto & Peto modification of the Gehan-Wilcoxon test
+# lung$sex_ecog = interaction(lung$sex, lung$ph.ecog)
+# survdiff(lung.sur~sex - ph.ecog : sex_ecog,lung)
+survdiff(lung.sur~sex - ph.ecog,lung)
+```
+
+# El daitivo ya hace todas las combinaciones de genero y estado funcional y el pvalor al formar estratos con 2 generos y 4 niveles de ecog : 8. El intercepto es el oculto. Hay 8 grupos comparado, las curvas de supervivencia de 2 generos por 4 estados funcionales, el pvalor arroja que todas son diferentes.
+
+```{r }
+survdiff(lung.sur~sex - ph.ecog,lung, rho = 0)
+survdiff(lung.sur~sex - ph.ecog,lung, rho = 1)
+```
+
+
+```{r }
+lung.fit.strata <- survfit(lung.sur~sex,lung)
+plot(lung.fit.strata, conf.int = 0.95, col= 1:2 ,xlab = "Dias", ylab="Proporcion de sujetos",
+     lwd=3)
+legend(700, .9, c("Male", "female"), lty = 1 : 2, col = 1 : 2, lwd = 3)
+abline(h = 0.08, col ='red')
+abline(h = 0.5, col ='purple')
+abline(h = 1, col ='brown')
+abline(v = 10, col ='blue')
+abline(v = 780, col ='green')
+abline(v = c(210,320))
+abline(v = c(350,550))
+```
+
+
+```{r }
+survdiff(lung.sur~sex - ph.ecog,lung, rho = 0)
+survdiff(lung.sur~sex - ph.ecog,lung, rho = 1)
+```
+# Modelo parametrico
+```{r }
+par.wei<-survreg(lung.sur~1,dist="w")
+par.wei
+```
+![Modelo parametrico Weibull](800px-Weibull_PDF.svg.png){100%}
+# lambda y k son los parametros de la distrubición. 
+```{r }
+kappa<-par.wei$scale
+lambda<-exp(-par.wei$coeff[1])
+zeit<-seq(from=0,to=1100,length.out=1000)
+s<-exp(-(lambda*zeit)^kappa)
+h<-lambda^kappa *kappa*zeit^(kappa-1)
+par(mfrow=c(2,1))
+plot(zeit,h,xlab="Days",ylab="h(t)")
+plot(zeit,s,xlab="Days",ylab="s(t)")
+```
+# Supervivencia: probabilidad es decir la integral de la funcion de probabilidad calculando el area bajo la curva, es decir la integral desde un punto cualquiera a un punto infinito  de la función de probabilidad. La derivada es el cambio de la supervivencia respecto al valor original. 
+# h(t) la primera derivada es el cambio de supervivencia respecto al valor original y s(t)=sobrevivencia. Es decir el riesgo y sobrevivencia. 
